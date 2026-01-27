@@ -23,7 +23,7 @@ spec:
       containers:
         - name: pageview-enricher
           # Replace with your actual Kafka Streams application image
-          image: confluentinc/cp-kafka:8.1.1
+          image: confluentinc/cp-kafka:8.1.0
           command:
             - /bin/sh
             - -c

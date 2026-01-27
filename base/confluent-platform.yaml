@@ -5,21 +5,20 @@ kind: Namespace
 metadata:
   name: confluent
 ---
-# Zookeeper Cluster
+# KRaft Controller (replaces Zookeeper in CP 8.x)
 apiVersion: platform.confluent.io/v1beta1
-kind: Zookeeper
+kind: KRaftController
 metadata:
-  name: zookeeper
+  name: kraftcontroller
   namespace: confluent
 spec:
   replicas: 3
   image:
-    application: confluentinc/cp-zookeeper:8.1.1
-    init: confluentinc/confluent-init-container:3.1.1
+    application: confluentinc/cp-server:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
   dataVolumeCapacity: 10Gi
-  logVolumeCapacity: 10Gi
 ---
-# Kafka Cluster
+# Kafka Cluster (KRaft mode)
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
 metadata:
@@ -28,11 +27,15 @@ metadata:
 spec:
   replicas: 3
   image:
-    application: confluentinc/cp-server:8.1.1
-    init: confluentinc/confluent-init-container:3.1.1
+    application: confluentinc/cp-server:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
   dataVolumeCapacity: 10Gi
   metricReporter:
     enabled: true
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller
 ---
 # Schema Registry
 apiVersion: platform.confluent.io/v1beta1
@@ -43,8 +46,11 @@ metadata:
 spec:
   replicas: 1
   image:
-    application: confluentinc/cp-schema-registry:8.1.1
-    init: confluentinc/confluent-init-container:3.1.1
+    application: confluentinc/cp-schema-registry:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka:9071
 ---
 # Kafka Connect Cluster
 apiVersion: platform.confluent.io/v1beta1
@@ -55,8 +61,8 @@ metadata:
 spec:
   replicas: 2
   image:
-    application: confluentinc/cp-server-connect:8.1.1
-    init: confluentinc/confluent-init-container:3.1.1
+    application: confluentinc/cp-server-connect:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
   dependencies:
     kafka:
       bootstrapEndpoint: kafka:9071
@@ -84,8 +90,8 @@ metadata:
 spec:
   replicas: 1
   image:
-    application: confluentinc/cp-ksqldb-server:8.1.1
-    init: confluentinc/confluent-init-container:3.1.1
+    application: confluentinc/cp-ksqldb-server:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
   dataVolumeCapacity: 10Gi
   dependencies:
     kafka:
@@ -102,8 +108,8 @@ metadata:
 spec:
   replicas: 1
   image:
-    application: confluentinc/cp-enterprise-control-center:8.1.1
-    init: confluentinc/confluent-init-container:3.1.1
+    application: confluentinc/cp-enterprise-control-center:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
   dataVolumeCapacity: 10Gi
   dependencies:
     kafka:

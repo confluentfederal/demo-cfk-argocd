@@ -17,10 +17,10 @@ patches:
         path: /spec/replicas
         value: 1
   
-  # Reduce Zookeeper to 1 for local testing  
+  # Reduce KRaft controllers to 1 for local testing
   - target:
-      kind: Zookeeper
-      name: zookeeper
+      kind: KRaftController
+      name: kraftcontroller
     patch: |-
       - op: replace
         path: /spec/replicas
