@@ -10,8 +10,7 @@ spec:
   project: default
   
   source:
-    # Update this to your Git repository URL
-    repoURL: https://github.com/YOUR-ORG/cfk-argocd-demo.git
+    repoURL: https://github.com/confluentfederal/cfk-argocd-demo.git
     targetRevision: HEAD
     path: overlays/dev  # Use overlays/prod for production
   
