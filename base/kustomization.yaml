@@ -15,8 +15,7 @@ resources:
   - kstreams-app.yaml
   
   # Flink environment and applications
-  # Note: Uncomment when CMF operator is installed
-  # - flink.yaml
+  - flink.yaml
 
 labels:
   - pairs:
