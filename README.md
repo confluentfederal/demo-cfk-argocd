@@ -1,12 +1,12 @@
 # Confluent Platform 8.1 GitOps Demo with Argo CD
 
-Complete GitOps demonstration showing declarative management of the entire Confluent Platform ecosystem using Argo CD.
+Complete GitOps demonstration showing declarative management of the entire Confluent Platform ecosystem using Argo CD on Kubernetes.
 
 ## What This Demo Shows
 
 | Component | GitOps Capability |
 |-----------|-------------------|
-| **Kafka Cluster** | Declarative broker configuration, scaling |
+| **Kafka Cluster (KRaft)** | Declarative broker configuration, scaling, no Zookeeper |
 | **Kafka Connect** | Connector CRDs - add/modify connectors via Git |
 | **ksqlDB** | Queries as code - SQL stored in Git |
 | **Kafka Streams** | Application deployments managed by Argo CD |
@@ -20,7 +20,7 @@ Complete GitOps demonstration showing declarative management of the entire Confl
 .
 ├── base/
 │   ├── kustomization.yaml          # Base kustomization
-│   ├── confluent-platform.yaml     # Core CP 8.1 components
+│   ├── confluent-platform.yaml     # Core CP 8.1 components (KRaft mode)
 │   ├── connectors.yaml             # Declarative Kafka Connect connectors
 │   ├── ksqldb-queries.yaml         # ksqlDB queries as ConfigMaps
 │   ├── kstreams-app.yaml           # Kafka Streams application deployment
@@ -28,12 +28,11 @@ Complete GitOps demonstration showing declarative management of the entire Confl
 ├── overlays/
 │   ├── dev/                        # Local k3d development (reduced resources)
 │   │   └── kustomization.yaml
-│   └── prod/                       # Production AWS/AKS (full resources)
+│   └── prod/                       # Production EKS/AKS (full resources)
 │       └── kustomization.yaml
 ├── argocd-application.yaml         # Argo CD Application manifest
-├── quick-start.sh                  # One-command local setup
-└── docs/
-    └── CONVERSATION-SUMMARY.md
+├── eks-cluster-config.yaml         # eksctl config for AWS EKS
+└── quick-start.sh                  # One-command local setup
 ```
 
 ## Quick Start (Local Development)
@@ -46,17 +45,69 @@ chmod +x quick-start.sh
 
 This will:
 1. Create a k3d cluster with 3 nodes
-2. Install CFK 3.1.1 operator
+2. Install CFK operator
 3. Install Argo CD
 4. Deploy Confluent Platform 8.1
 
+## AWS EKS Deployment
+
+### Create EKS Cluster
+
+```bash
+# Create cluster with proper tagging
+eksctl create cluster -f eks-cluster-config.yaml
+
+# Install EBS CSI driver
+eksctl create addon --name aws-ebs-csi-driver --cluster cfk-argocd-demo --region us-east-1
+
+# Add EC2 permissions to node role (for EBS)
+ROLE_NAME=$(aws iam list-roles --query "Roles[?contains(RoleName, 'eksctl-cfk-argocd-demo-nodegroup')].RoleName" --output text)
+aws iam attach-role-policy --role-name "$ROLE_NAME" --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
+```
+
+### Install Operators
+
+```bash
+# CFK Operator
+helm repo add confluentinc https://packages.confluent.io/helm
+kubectl create namespace confluent-operator
+helm upgrade --install confluent-operator confluentinc/confluent-for-kubernetes \
+  --namespace confluent-operator --set namespaced=false
+
+# Argo CD
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
+
+### Deploy Confluent Platform
+
+```bash
+# Create StorageClass with proper tags (edit as needed)
+kubectl apply -f - <<EOF
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+EOF
+
+# Deploy via Argo CD
+kubectl apply -f argocd-application.yaml
+```
+
 ## Components Deployed
 
-### Core Platform (CP 8.1.1)
-- **Zookeeper** - Coordination service (3 replicas prod, 1 dev)
+### Core Platform (CP 8.1 KRaft Mode)
+- **KRaft Controllers** - Metadata management (3 replicas prod, 1 dev)
 - **Kafka** - Event streaming (3 brokers prod, 1 dev)
 - **Schema Registry** - Schema management
-- **Control Center** - Monitoring UI
+- **Control Center** - Monitoring UI (Next-Gen 2.3.1)
 
 ### Data Integration
 - **Kafka Connect** - With declarative connector management
@@ -93,7 +144,7 @@ spec:
 Commit, push, watch Argo CD deploy it.
 
 ### 2. Scale Kafka Cluster
-Edit overlay patch in `overlays/dev/kustomization.yaml`:
+Edit overlay patch in `overlays/prod/kustomization.yaml`:
 
 ```yaml
 - target:
@@ -102,7 +153,7 @@ Edit overlay patch in `overlays/dev/kustomization.yaml`:
   patch: |-
     - op: replace
       path: /spec/replicas
-      value: 3
+      value: 5
 ```
 
 ### 3. Add ksqlDB Query
@@ -140,51 +191,16 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 kubectl exec -it ksqldb-0 -n confluent -- ksql http://localhost:8088
 ```
 
-## Demo Script (30 minutes)
-
-### Introduction (5 min)
-1. Explain GitOps principles
-2. Show repository structure
-3. Highlight declarative approach
-
-### Live Demo (15 min)
-1. **Show Argo CD** - Synced resources, health status
-2. **Add connector via Git** - Commit, watch auto-deploy
-3. **Show data flowing** - Control Center topics view
-4. **Scale Kafka** - Modify replica count, observe rolling update
-5. **Add ksqlDB query** - Show query deployment
-
-### Deep Dive (10 min)
-1. Kustomize base + overlays pattern
-2. Environment promotion (dev → prod)
-3. Rollback demonstration
-4. Discuss production considerations
-
 ## Environment Comparison
 
-| Setting | Dev (k3d) | Prod (AWS/AKS) |
+| Setting | Dev (k3d) | Prod (EKS/AKS) |
 |---------|-----------|----------------|
+| KRaft replicas | 1 | 3 |
 | Kafka replicas | 1 | 3 |
-| Zookeeper replicas | 1 | 3 |
 | Connect workers | 1 | 2 |
 | ksqlDB replicas | 1 | 2 |
 | Storage per broker | 10Gi | 100Gi |
-| Flink | Disabled | Enabled |
-
-## Production Deployment (AWS/AKS)
-
-### Prerequisites
-- EKS or AKS cluster (3+ nodes, m5.xlarge or equivalent)
-- EBS CSI driver (AWS) or Azure Disk CSI (AKS)
-- CFK 3.1.1 operator installed
-- CMF operator (for Flink)
-
-### Deploy
-```bash
-# Point Argo CD at production overlay
-kubectl apply -f argocd-application.yaml
-# Edit repoURL and change path to overlays/prod
-```
+| Flink | Disabled | Optional |
 
 ## Flink Setup (Optional)
 
@@ -227,17 +243,21 @@ kubectl patch application confluent-platform -n argocd \
 # Delete application
 kubectl delete application confluent-platform -n argocd
 
-# Delete cluster (local)
+# Delete local cluster
 k3d cluster delete cfk-demo
+
+# Delete EKS cluster
+eksctl delete cluster --name cfk-argocd-demo --region us-east-1
 ```
 
 ## Technologies
 
-- **Confluent Platform 8.1.1** - Apache Kafka 4.1
-- **CFK 3.1.1** - Confluent for Kubernetes operator
+- **Confluent Platform 8.1** - Apache Kafka with KRaft mode
+- **CFK 3.1** - Confluent for Kubernetes operator
 - **Argo CD** - GitOps continuous delivery
 - **Kustomize** - Configuration management
 - **k3d** - Local Kubernetes (development)
+- **AWS EKS** - Production Kubernetes
 
 ## References
 
