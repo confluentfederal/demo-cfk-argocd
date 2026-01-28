@@ -5,20 +5,40 @@ metadata:
   name: cfk-argocd-demo
   region: us-east-1
   version: "1.31"
+  tags:
+    cflt_environment: dev
+    cflt_partition: onprem
+    cflt_managed_by: user
+    cflt_managed_id: cstevenson
+    cflt_service: "0012 Delivery Professional Services"
+    cflt_keep_until: "2026-12-31"
+    owner_email: cstevenson@confluent.io
+    owner_name: Cory Stevenson
+    divvy_owner: cstevenson@confluent.io
+    divvy_last_modified_by: cstevenson@confluent.io
 
 vpc:
   nat:
-    gateway: Disable  # Avoid NAT Gateway if blocked by SCP
+    gateway: Disable
 
 managedNodeGroups:
-  - name: cfk-nodes
+  - name: cfk-argocd-nodes
     instanceType: m5.xlarge
     desiredCapacity: 3
     minSize: 3
     maxSize: 6
-    privateNetworking: false  # Use public subnets
+    privateNetworking: false
     volumeSize: 100
     labels:
       role: confluent
     tags:
-      Environment: demo
+      cflt_environment: dev
+      cflt_partition: onprem
+      cflt_managed_by: user
+      cflt_managed_id: cstevenson
+      cflt_service: "0012 Delivery Professional Services"
+      cflt_keep_until: "2026-12-31"
+      owner_email: cstevenson@confluent.io
+      owner_name: Cory Stevenson
+      divvy_owner: cstevenson@confluent.io
+      divvy_last_modified_by: cstevenson@confluent.io
