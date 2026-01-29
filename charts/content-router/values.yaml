@@ -7,7 +7,7 @@ namespace: confluent
 replicas: 1
 
 image:
-  repository: registry.troxlie.com/confluentps/kstream-content-router
+  repository: confluentps/kstream-content-router
   tag: latest
   pullPolicy: IfNotPresent
 
