@@ -1,0 +1,67 @@
+{{- if .Values.flink.enabled }}
+---
+# CMF REST Class - Connection between CFK and CMF
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: default
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+spec:
+  cmfRest:
+    endpoint: {{ .Values.flink.cmf.endpoint }}
+---
+# Flink Environment - Default configuration for Flink applications
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkEnvironment
+metadata:
+  name: {{ .Values.flink.environment.name }}
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+spec:
+  kubernetesNamespace: {{ include "confluent-platform.namespace" . }}
+  flinkApplicationDefaults:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: confluent-platform
+    spec:
+      flinkConfiguration:
+        {{- toYaml .Values.flink.environment.flinkConfiguration | nindent 8 }}
+  cmfRestClassRef:
+    name: default
+    namespace: {{ include "confluent-platform.namespace" . }}
+{{- range .Values.flink.applications }}
+---
+# Flink Application - {{ .name }}
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: {{ .name }}
+  namespace: {{ include "confluent-platform.namespace" $ }}
+  labels:
+    {{- include "confluent-platform.labels" $ | nindent 4 }}
+spec:
+  flinkEnvironment: {{ $.Values.flink.environment.name }}
+  image: {{ .image }}
+  flinkVersion: {{ .flinkVersion }}
+  flinkConfiguration:
+    {{- toYaml .flinkConfiguration | nindent 4 }}
+  serviceAccount: {{ .serviceAccount | default "flink" }}
+  jobManager:
+    resource:
+      {{- toYaml .jobManager.resource | nindent 6 }}
+  taskManager:
+    resource:
+      {{- toYaml .taskManager.resource | nindent 6 }}
+  job:
+    jarURI: {{ .job.jarURI }}
+    state: {{ .job.state }}
+    parallelism: {{ .job.parallelism }}
+    upgradeMode: {{ .job.upgradeMode | default "stateless" }}
+  cmfRestClassRef:
+    name: default
+    namespace: {{ include "confluent-platform.namespace" $ }}
+{{- end }}
+{{- end }}

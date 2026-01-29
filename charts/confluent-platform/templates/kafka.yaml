@@ -1,0 +1,25 @@
+{{- if .Values.kafka.enabled }}
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.kafka.replicas }}
+  image:
+    application: {{ .Values.kafka.image.application }}
+    init: {{ .Values.kafka.image.init }}
+  dataVolumeCapacity: {{ .Values.kafka.dataVolumeCapacity }}
+  metricReporter:
+    enabled: {{ .Values.kafka.metricReporter.enabled }}
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller
+  {{- if .Values.kafka.configOverrides }}
+  configOverrides:
+    {{- toYaml .Values.kafka.configOverrides | nindent 4 }}
+  {{- end }}
+{{- end }}

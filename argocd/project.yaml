@@ -1,0 +1,28 @@
+---
+# Argo CD AppProject for Confluent workloads
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: confluent
+  namespace: argocd
+spec:
+  description: Confluent Platform GitOps project
+  
+  sourceRepos:
+    - 'https://github.com/confluentfederal/*'
+  
+  destinations:
+    - namespace: confluent
+      server: https://kubernetes.default.svc
+    - namespace: confluent-operator
+      server: https://kubernetes.default.svc
+  
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: platform.confluent.io
+      kind: '*'
+  
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

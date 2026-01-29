@@ -1,0 +1,38 @@
+---
+# Argo CD Application for Confluent Platform - Production Environment
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: confluent-platform-prod
+  namespace: argocd
+  labels:
+    environment: prod
+spec:
+  project: confluent
+  
+  source:
+    repoURL: https://github.com/confluentfederal/cfk-argocd-demo.git
+    targetRevision: helm-migration  # Change to main after merge
+    path: charts/confluent-platform
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-prod.yaml
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: confluent
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

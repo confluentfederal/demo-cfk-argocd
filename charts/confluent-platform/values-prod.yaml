@@ -1,0 +1,41 @@
+# Production environment values
+# For AWS EKS / Azure AKS with full resources
+
+# Let ArgoCD create namespace
+createNamespace: true
+
+# KRaft Controller - 3 nodes for HA
+kraftController:
+  replicas: 3
+  dataVolumeCapacity: 20Gi
+
+# Kafka - 3 brokers for HA
+kafka:
+  replicas: 3
+  dataVolumeCapacity: 100Gi
+
+# Connect - 2 workers for HA
+connect:
+  replicas: 2
+
+# ksqlDB - 2 replicas for HA
+ksqldb:
+  replicas: 2
+  dataVolumeCapacity: 50Gi
+
+# Control Center - external access via NodePort
+controlCenter:
+  externalAccess:
+    enabled: true
+    type: nodePort
+    nodePort:
+      host: ""  # Set to your node's external IP
+      nodePortOffset: 30021
+
+# Kafka Streams - 3 replicas for HA
+kstreamsApp:
+  replicas: 3
+
+# Content Router - 2 replicas for HA
+contentRouter:
+  replicas: 2

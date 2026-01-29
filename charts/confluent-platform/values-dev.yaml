@@ -1,0 +1,47 @@
+# Development environment values
+# For local k3d/laptop development with reduced resources
+
+# Namespace already exists in dev
+createNamespace: false
+
+# KRaft Controller - single node for dev
+kraftController:
+  replicas: 1
+
+# Kafka - single broker for dev
+kafka:
+  replicas: 1
+
+# Connect - single worker with replication factor overrides
+connect:
+  replicas: 1
+  configOverrides:
+    server:
+      - config.storage.replication.factor=1
+      - offset.storage.replication.factor=1
+      - status.storage.replication.factor=1
+
+# ksqlDB - single replica with replication overrides
+ksqldb:
+  replicas: 1
+  configOverrides:
+    server:
+      - ksql.internal.topic.replicas=1
+      - ksql.streams.replication.factor=1
+
+# Control Center - replication overrides for single broker
+controlCenter:
+  configOverrides:
+    server:
+      - confluent.controlcenter.internal.topics.replication=1
+      - confluent.controlcenter.command.topic.replication=1
+      - confluent.monitoring.interceptor.topic.replication=1
+      - confluent.metrics.topic.replication=1
+
+# Kafka Streams - single replica for dev
+kstreamsApp:
+  replicas: 1
+
+# Content Router - single replica for dev
+contentRouter:
+  replicas: 1

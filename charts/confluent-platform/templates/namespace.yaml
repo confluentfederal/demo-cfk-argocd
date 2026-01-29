@@ -1,0 +1,8 @@
+{{- if .Values.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+{{- end }}

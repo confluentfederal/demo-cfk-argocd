@@ -1,0 +1,30 @@
+{{- if .Values.connect.enabled }}
+apiVersion: platform.confluent.io/v1beta1
+kind: Connect
+metadata:
+  name: connect
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.connect.replicas }}
+  image:
+    application: {{ .Values.connect.image.application }}
+    init: {{ .Values.connect.image.init }}
+  dependencies:
+    kafka:
+      bootstrapEndpoint: {{ include "confluent-platform.kafkaBootstrap" . }}
+    schemaRegistry:
+      url: {{ include "confluent-platform.schemaRegistryUrl" . }}
+  build:
+    type: onDemand
+    onDemand:
+      plugins:
+        locationType: confluentHub
+        confluentHub:
+          {{- toYaml .Values.connect.plugins | nindent 10 }}
+  {{- if .Values.connect.configOverrides }}
+  configOverrides:
+    {{- toYaml .Values.connect.configOverrides | nindent 4 }}
+  {{- end }}
+{{- end }}

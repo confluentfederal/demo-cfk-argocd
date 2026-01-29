@@ -1,0 +1,75 @@
+{{- if .Values.kstreamsApp.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.kstreamsApp.name }}
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+    app: {{ .Values.kstreamsApp.name }}
+    component: kstreams
+spec:
+  replicas: {{ .Values.kstreamsApp.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.kstreamsApp.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.kstreamsApp.name }}
+        component: kstreams
+    spec:
+      containers:
+        - name: {{ .Values.kstreamsApp.name }}
+          image: {{ .Values.kstreamsApp.image }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting Kafka Streams demo consumer..."
+              echo "Application ID: $APPLICATION_ID"
+              echo "Reading from: $INPUT_TOPIC"
+              
+              # Simple consumer that reads and logs enriched pageviews
+              kafka-console-consumer \
+                --bootstrap-server $BOOTSTRAP_SERVERS \
+                --topic $INPUT_TOPIC \
+                --group $APPLICATION_ID \
+                --property print.key=true \
+                --property print.timestamp=true \
+                2>&1 | while read line; do
+                  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Processed: $line"
+                done
+          env:
+            - name: BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: SCHEMA_REGISTRY_URL
+              value: {{ include "confluent-platform.schemaRegistryUrl" . }}
+            - name: APPLICATION_ID
+              value: {{ .Values.kstreamsApp.applicationId }}
+            - name: INPUT_TOPIC
+              value: {{ .Values.kstreamsApp.inputTopic }}
+            - name: OUTPUT_TOPIC
+              value: {{ .Values.kstreamsApp.outputTopic }}
+          resources:
+            {{- toYaml .Values.kstreamsApp.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kstreams-config
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+data:
+  streams.properties: |
+    application.id={{ .Values.kstreamsApp.applicationId }}
+    bootstrap.servers=kafka:9092
+    schema.registry.url={{ include "confluent-platform.schemaRegistryUrl" . }}
+    default.key.serde=org.apache.kafka.common.serialization.Serdes$StringSerde
+    default.value.serde=io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
+    num.stream.threads=2
+    commit.interval.ms=1000
+    cache.max.bytes.buffering=10485760
+{{- end }}

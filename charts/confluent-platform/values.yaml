@@ -1,0 +1,290 @@
+# Default values for confluent-platform
+# This is the base configuration - override in values-dev.yaml or values-prod.yaml
+
+# Create namespace (set to false if namespace already exists or managed externally)
+createNamespace: true
+
+# Global image settings
+global:
+  cpVersion: "8.1.0"
+  initVersion: "3.1.0"
+
+# KRaft Controller (replaces Zookeeper)
+kraftController:
+  enabled: true
+  replicas: 3
+  image:
+    application: confluentinc/cp-server:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
+  dataVolumeCapacity: 10Gi
+  configOverrides: {}
+
+# Kafka Cluster
+kafka:
+  enabled: true
+  replicas: 3
+  image:
+    application: confluentinc/cp-server:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
+  dataVolumeCapacity: 10Gi
+  metricReporter:
+    enabled: true
+  configOverrides: {}
+
+# Schema Registry
+schemaRegistry:
+  enabled: true
+  replicas: 1
+  image:
+    application: confluentinc/cp-schema-registry:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
+  configOverrides: {}
+
+# Kafka Connect
+connect:
+  enabled: true
+  replicas: 2
+  image:
+    application: confluentinc/cp-server-connect:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
+  plugins:
+    - name: kafka-connect-datagen
+      owner: confluentinc
+      version: "0.6.5"
+    - name: kafka-connect-jdbc
+      owner: confluentinc
+      version: "10.8.0"
+  configOverrides: {}
+
+# ksqlDB
+ksqldb:
+  enabled: true
+  replicas: 1
+  image:
+    application: confluentinc/cp-ksqldb-server:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
+  dataVolumeCapacity: 10Gi
+  configOverrides: {}
+  
+  # ksqlDB Queries
+  queries:
+    enabled: true
+    items:
+      01-create-pageviews-stream.sql: |
+        CREATE STREAM pageviews_stream (
+          viewtime BIGINT,
+          userid VARCHAR,
+          pageid VARCHAR
+        ) WITH (
+          KAFKA_TOPIC='pageviews',
+          VALUE_FORMAT='AVRO'
+        );
+      02-create-users-table.sql: |
+        CREATE TABLE users_table (
+          userid VARCHAR PRIMARY KEY,
+          registertime BIGINT,
+          gender VARCHAR,
+          regionid VARCHAR
+        ) WITH (
+          KAFKA_TOPIC='users',
+          VALUE_FORMAT='AVRO'
+        );
+      03-create-enriched-pageviews.sql: |
+        CREATE STREAM enriched_pageviews AS
+        SELECT 
+          pv.viewtime,
+          pv.userid,
+          pv.pageid,
+          u.gender,
+          u.regionid
+        FROM pageviews_stream pv
+        LEFT JOIN users_table u ON pv.userid = u.userid
+        EMIT CHANGES;
+      04-pageviews-by-region.sql: |
+        CREATE TABLE pageviews_by_region AS
+        SELECT 
+          regionid,
+          COUNT(*) AS view_count
+        FROM enriched_pageviews
+        GROUP BY regionid
+        EMIT CHANGES;
+
+# Control Center
+controlCenter:
+  enabled: true
+  replicas: 1
+  image:
+    application: confluentinc/cp-enterprise-control-center-next-gen:2.3.1
+    init: confluentinc/confluent-init-container:3.1.0
+  dataVolumeCapacity: 10Gi
+  externalAccess:
+    enabled: false
+    type: nodePort
+    nodePort:
+      host: ""
+      nodePortOffset: 30021
+  cmf:
+    enabled: true
+    url: http://cmf-service.confluent.svc.cluster.local:80
+  configOverrides:
+    server: []
+
+# Connectors
+connectors:
+  enabled: true
+  items:
+    - name: datagen-users
+      class: io.confluent.kafka.connect.datagen.DatagenConnector
+      taskMax: 1
+      topic: users
+      quickstart: users
+      maxInterval: "1000"
+      iterations: "10000000"
+    - name: datagen-pageviews
+      class: io.confluent.kafka.connect.datagen.DatagenConnector
+      taskMax: 1
+      topic: pageviews
+      quickstart: pageviews
+      maxInterval: "500"
+      iterations: "10000000"
+    - name: datagen-orders
+      class: io.confluent.kafka.connect.datagen.DatagenConnector
+      taskMax: 1
+      topic: orders
+      quickstart: orders
+      maxInterval: "2000"
+      iterations: "10000000"
+    - name: datagen-stock-trades
+      class: io.confluent.kafka.connect.datagen.DatagenConnector
+      taskMax: 1
+      topic: stock-trades
+      quickstart: stock_trades
+      maxInterval: "100"
+      iterations: "10000000"
+
+# Kafka Streams Demo App
+kstreamsApp:
+  enabled: true
+  name: pageview-enricher
+  replicas: 2
+  image: confluentinc/cp-kafka:8.1.0
+  applicationId: pageview-enricher-v1
+  inputTopic: ENRICHED_PAGEVIEWS
+  outputTopic: processed-pageviews
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+# Flink
+flink:
+  enabled: true
+  cmf:
+    endpoint: http://cmf-service.confluent.svc.cluster.local:80
+  environment:
+    name: flink-env
+    flinkConfiguration:
+      taskmanager.numberOfTaskSlots: "2"
+      rest.profiling.enabled: "true"
+  applications:
+    - name: state-machine-example
+      image: confluentinc/cp-flink-sql:1.19-cp1
+      flinkVersion: v1_19
+      flinkConfiguration:
+        taskmanager.numberOfTaskSlots: "2"
+      serviceAccount: flink
+      jobManager:
+        resource:
+          memory: "1200m"
+          cpu: 1
+      taskManager:
+        resource:
+          memory: "1200m"
+          cpu: 1
+      job:
+        jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+        state: running
+        parallelism: 2
+        upgradeMode: stateless
+
+# Content Router (Kafka Streams content-based routing application)
+contentRouter:
+  enabled: false  # Enable when ready to deploy
+  replicas: 1
+  image:
+    repository: registry.troxlie.com/confluentps/kstream-content-router
+    tag: latest
+    pullPolicy: IfNotPresent
+  imagePullSecrets: []
+  
+  # Kafka connection
+  kafka:
+    bootstrapServers: kafka:9071
+  
+  # Schema Registry connection
+  schemaRegistry:
+    url: http://schemaregistry.confluent.svc.cluster.local:8081
+  
+  # Topics
+  inputTopics:
+    - input-topic
+  outputTopic: default-output
+  errorTopic: error-topic
+  
+  # Routing configuration
+  routing:
+    inputTopicFormat: AVRO  # AVRO, JSON, JSON_NOSCHEMA, STRING
+    inputMessageField: rawMessage
+    defaultOutputTopic: unmatched-messages
+    removeControlCharacters: true
+    rules: []
+    # Example rules:
+    # - regEx: ".*ERROR.*"
+    #   outputTopic: error-messages
+    # - substring: "WARN"
+    #   outputTopic: warning-messages
+  
+  # Additional Kafka Streams configuration
+  streamsConfig: {}
+  # Example:
+  # streamsConfig:
+  #   "security.protocol": "SSL"
+  #   "ssl.truststore.type": "PEM"
+  
+  # TLS configuration
+  tls:
+    enabled: false
+    secretName: ""  # Name of secret containing TLS certs
+  
+  # Environment variables
+  extraEnv: []
+  
+  # Additional volume mounts
+  extraVolumeMounts: []
+  extraVolumes: []
+  
+  # Resources
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  # Probes (uncomment to enable)
+  # livenessProbe:
+  #   httpGet:
+  #     path: /actuator/health
+  #     port: 8080
+  #   initialDelaySeconds: 30
+  #   periodSeconds: 10
+  # readinessProbe:
+  #   httpGet:
+  #     path: /actuator/health
+  #     port: 8080
+  #   initialDelaySeconds: 10
+  #   periodSeconds: 5

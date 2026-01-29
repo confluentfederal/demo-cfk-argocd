@@ -1,0 +1,19 @@
+{{- if .Values.kraftController.enabled }}
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.kraftController.replicas }}
+  image:
+    application: {{ .Values.kraftController.image.application }}
+    init: {{ .Values.kraftController.image.init }}
+  dataVolumeCapacity: {{ .Values.kraftController.dataVolumeCapacity }}
+  {{- if .Values.kraftController.configOverrides }}
+  configOverrides:
+    {{- toYaml .Values.kraftController.configOverrides | nindent 4 }}
+  {{- end }}
+{{- end }}

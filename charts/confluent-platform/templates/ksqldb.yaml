@@ -1,0 +1,24 @@
+{{- if .Values.ksqldb.enabled }}
+apiVersion: platform.confluent.io/v1beta1
+kind: KsqlDB
+metadata:
+  name: ksqldb
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.ksqldb.replicas }}
+  image:
+    application: {{ .Values.ksqldb.image.application }}
+    init: {{ .Values.ksqldb.image.init }}
+  dataVolumeCapacity: {{ .Values.ksqldb.dataVolumeCapacity }}
+  dependencies:
+    kafka:
+      bootstrapEndpoint: {{ include "confluent-platform.kafkaBootstrap" . }}
+    schemaRegistry:
+      url: {{ include "confluent-platform.schemaRegistryUrl" . }}
+  {{- if .Values.ksqldb.configOverrides }}
+  configOverrides:
+    {{- toYaml .Values.ksqldb.configOverrides | nindent 4 }}
+  {{- end }}
+{{- end }}

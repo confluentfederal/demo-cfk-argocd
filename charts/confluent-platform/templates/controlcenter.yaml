@@ -1,0 +1,44 @@
+{{- if .Values.controlCenter.enabled }}
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.controlCenter.replicas }}
+  image:
+    application: {{ .Values.controlCenter.image.application }}
+    init: {{ .Values.controlCenter.image.init }}
+  dataVolumeCapacity: {{ .Values.controlCenter.dataVolumeCapacity }}
+  {{- if .Values.controlCenter.externalAccess.enabled }}
+  externalAccess:
+    type: {{ .Values.controlCenter.externalAccess.type }}
+    {{- if eq .Values.controlCenter.externalAccess.type "nodePort" }}
+    nodePort:
+      host: {{ .Values.controlCenter.externalAccess.nodePort.host }}
+      nodePortOffset: {{ .Values.controlCenter.externalAccess.nodePort.nodePortOffset }}
+    {{- end }}
+  {{- end }}
+  configOverrides:
+    server:
+      {{- if .Values.controlCenter.cmf.enabled }}
+      - confluent.controlcenter.cmf.enable=true
+      - confluent.controlcenter.cmf.url={{ .Values.controlCenter.cmf.url }}
+      {{- end }}
+      {{- range .Values.controlCenter.configOverrides.server }}
+      - {{ . }}
+      {{- end }}
+  dependencies:
+    kafka:
+      bootstrapEndpoint: {{ include "confluent-platform.kafkaBootstrap" . }}
+    schemaRegistry:
+      url: {{ include "confluent-platform.schemaRegistryUrl" . }}
+    ksqldb:
+      - name: ksqldb
+        url: http://ksqldb.{{ include "confluent-platform.namespace" . }}.svc.cluster.local:8088
+    connect:
+      - name: connect
+        url: http://connect.{{ include "confluent-platform.namespace" . }}.svc.cluster.local:8083
+{{- end }}

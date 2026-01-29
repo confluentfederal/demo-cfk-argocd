@@ -1,0 +1,21 @@
+{{- if .Values.schemaRegistry.enabled }}
+apiVersion: platform.confluent.io/v1beta1
+kind: SchemaRegistry
+metadata:
+  name: schemaregistry
+  namespace: {{ include "confluent-platform.namespace" . }}
+  labels:
+    {{- include "confluent-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.schemaRegistry.replicas }}
+  image:
+    application: {{ .Values.schemaRegistry.image.application }}
+    init: {{ .Values.schemaRegistry.image.init }}
+  dependencies:
+    kafka:
+      bootstrapEndpoint: {{ include "confluent-platform.kafkaBootstrap" . }}
+  {{- if .Values.schemaRegistry.configOverrides }}
+  configOverrides:
+    {{- toYaml .Values.schemaRegistry.configOverrides | nindent 4 }}
+  {{- end }}
+{{- end }}

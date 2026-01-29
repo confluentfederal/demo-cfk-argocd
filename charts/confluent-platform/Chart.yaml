@@ -1,0 +1,18 @@
+apiVersion: v2
+name: confluent-platform
+description: Confluent Platform deployed via CFK (Confluent for Kubernetes)
+type: application
+version: 1.0.0
+appVersion: "8.1.0"
+
+keywords:
+  - kafka
+  - confluent
+  - streaming
+  - cfk
+
+maintainers:
+  - name: Confluent Federal
+    email: cstevenson@confluent.io
+
+dependencies: []
