@@ -18,13 +18,13 @@ flinkConfiguration:
 
 jobManager:
   resource:
-    memory: "1024m"
-    cpu: "0.5"
+    memory: "512m"
+    cpu: "0.25"
 
 taskManager:
   resource:
-    memory: "1024m"
-    cpu: "0.5"
+    memory: "512m"
+    cpu: "0.25"
 
 job:
   jarURI: local:///opt/flink/usrlib/java-flink-0.0.1.jar
