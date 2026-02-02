@@ -4,7 +4,8 @@
 namespace: confluent
 
 # Deployment settings
-replicas: 1
+# NOTE: Set to 0 until confluentps/kstream-content-router image is built and pushed
+replicas: 0
 
 image:
   repository: confluentps/kstream-content-router
