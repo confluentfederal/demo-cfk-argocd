@@ -70,40 +70,42 @@ ksqldb:
   queries:
     enabled: true
     items:
-      # Network Events Stream - monitors network events for enrichment
-      01-network-events-stream.sql: |
-        CREATE STREAM network_events_stream (
-          event_time BIGINT,
-          source_ip VARCHAR,
-          dest_ip VARCHAR,
-          protocol VARCHAR,
-          bytes_transferred BIGINT
+      # Clickstream Raw - reads from datagen clickstream data
+      01-clickstream-raw.sql: |
+        CREATE STREAM IF NOT EXISTS clickstream_raw (
+          ip VARCHAR,
+          userid INT,
+          remote_user VARCHAR,
+          time VARCHAR,
+          _time INT,
+          request VARCHAR,
+          status VARCHAR,
+          bytes VARCHAR,
+          referrer VARCHAR,
+          agent VARCHAR
         ) WITH (
           KAFKA_TOPIC='network-events',
           VALUE_FORMAT='JSON'
         );
-      # Network Traffic Summary - aggregates traffic by protocol
-      02-traffic-by-protocol.sql: |
-        CREATE TABLE traffic_by_protocol AS
+      # Requests by Status - aggregates requests by HTTP status code
+      02-requests-by-status.sql: |
+        CREATE TABLE IF NOT EXISTS requests_by_status AS
         SELECT 
-          protocol,
-          COUNT(*) AS event_count,
-          SUM(bytes_transferred) AS total_bytes
-        FROM network_events_stream
+          status,
+          COUNT(*) AS request_count
+        FROM clickstream_raw
         WINDOW TUMBLING (SIZE 1 MINUTE)
-        GROUP BY protocol
+        GROUP BY status
         EMIT CHANGES;
-      # High Volume Sources - identifies high traffic sources
-      03-high-volume-sources.sql: |
-        CREATE TABLE high_volume_sources AS
+      # Top IPs - identifies most active IP addresses
+      03-top-ips.sql: |
+        CREATE TABLE IF NOT EXISTS top_ips AS
         SELECT 
-          source_ip,
-          COUNT(*) AS request_count,
-          SUM(bytes_transferred) AS total_bytes
-        FROM network_events_stream
+          ip,
+          COUNT(*) AS request_count
+        FROM clickstream_raw
         WINDOW TUMBLING (SIZE 5 MINUTES)
-        GROUP BY source_ip
-        HAVING COUNT(*) > 100
+        GROUP BY ip
         EMIT CHANGES;
 
 # Control Center
