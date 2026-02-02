@@ -1,0 +1,39 @@
+---
+# Argo CD Application for Syslog Segment Reconstruction
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flink-syslog-reconstruction
+  namespace: argocd
+  labels:
+    environment: prod
+    component: flink
+    use-case: log-processing
+spec:
+  project: confluent
+  
+  source:
+    repoURL: https://github.com/confluentfederal/cfk-argocd-demo.git
+    targetRevision: helm-migration
+    path: charts/flink-application
+    helm:
+      releaseName: syslog-reconstruction
+      valueFiles:
+        - values-syslog-reconstruction.yaml
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: confluent
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
