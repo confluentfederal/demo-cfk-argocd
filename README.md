@@ -223,6 +223,30 @@ kubectl get application confluent-platform-prod -n argocd \
   -o jsonpath='{.spec.source.targetRevision}'
 ```
 
+**Example: syslog-reconstruction v2 branch**
+
+The `feature/syslog-v2` branch has optimized settings (2 replicas, faster windows):
+
+```bash
+# Switch to v2
+kubectl patch application syslog-reconstruction -n argocd \
+  --type merge -p '{"spec":{"source":{"targetRevision":"feature/syslog-v2"}}}'
+
+# Switch back to main
+kubectl patch application syslog-reconstruction -n argocd \
+  --type merge -p '{"spec":{"source":{"targetRevision":"main"}}}'
+
+# Force sync after switch
+kubectl annotate application syslog-reconstruction -n argocd \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+| Setting | main | feature/syslog-v2 |
+|---------|------|-------------------|
+| replicas | 1 | 2 |
+| window.sizeSeconds | 30 | 15 |
+| window.gracePeriodSeconds | 60 | 30 |
+
 ## Environment Configuration
 
 | Setting | Dev | Prod |

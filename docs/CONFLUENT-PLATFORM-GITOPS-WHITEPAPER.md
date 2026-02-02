@@ -621,6 +621,40 @@ spec:
         - values-prod.yaml
 ```
 
+### Example: syslog-reconstruction Branch Switching
+
+The `feature/syslog-v2` branch contains optimized settings for higher throughput:
+
+| Setting | main | feature/syslog-v2 |
+|---------|------|-------------------|
+| replicas | 1 | 2 |
+| window.sizeSeconds | 30 | 15 |
+| window.gracePeriodSeconds | 60 | 30 |
+
+**Switch to v2:**
+```bash
+kubectl patch application syslog-reconstruction -n argocd \
+  --type merge -p '{"spec":{"source":{"targetRevision":"feature/syslog-v2"}}}'
+```
+
+**Switch back to main:**
+```bash
+kubectl patch application syslog-reconstruction -n argocd \
+  --type merge -p '{"spec":{"source":{"targetRevision":"main"}}}'
+```
+
+**Force sync after switch:**
+```bash
+kubectl annotate application syslog-reconstruction -n argocd \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+**Check current branch:**
+```bash
+kubectl get application syslog-reconstruction -n argocd \
+  -o jsonpath='{.spec.source.targetRevision}'
+```
+
 ---
 
 ## Scaling Applications
