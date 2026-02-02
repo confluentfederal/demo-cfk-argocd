@@ -1,8 +1,9 @@
 # Syslog Segment Reconstruction - Default values
+# Version: 2.0 - Optimized for higher throughput
 
 namespace: confluent
 
-replicas: 1
+replicas: 2
 
 image:
   repository: cstevenson954/syslog-segment-reconstruction
@@ -33,8 +34,8 @@ topics:
   outputExpired: reconstruction-expired
 
 window:
-  sizeSeconds: 30
-  gracePeriodSeconds: 60
+  sizeSeconds: 15      # Reduced from 30s for faster processing
+  gracePeriodSeconds: 30  # Reduced from 60s
 
 expired:
   thresholdHours: 24
