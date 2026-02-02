@@ -1,0 +1,35 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "flink-application.labels" . | nindent 4 }}
+spec:
+  flinkEnvironment: {{ .Values.flinkEnvironment }}
+  image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+  flinkVersion: {{ .Values.flinkVersion }}
+  flinkConfiguration:
+    {{- toYaml .Values.flinkConfiguration | nindent 4 }}
+  serviceAccount: {{ .Values.serviceAccount }}
+  jobManager:
+    resource:
+      {{- toYaml .Values.jobManager.resource | nindent 6 }}
+  taskManager:
+    resource:
+      {{- toYaml .Values.taskManager.resource | nindent 6 }}
+  job:
+    jarURI: {{ .Values.job.jarURI }}
+    {{- if .Values.job.entryClass }}
+    entryClass: {{ .Values.job.entryClass }}
+    {{- end }}
+    state: {{ .Values.job.state }}
+    parallelism: {{ .Values.job.parallelism }}
+    upgradeMode: {{ .Values.job.upgradeMode | default "stateless" }}
+    {{- if .Values.job.args }}
+    args:
+      {{- toYaml .Values.job.args | nindent 6 }}
+    {{- end }}
+  cmfRestClassRef:
+    name: default
+    namespace: {{ .Values.namespace }}

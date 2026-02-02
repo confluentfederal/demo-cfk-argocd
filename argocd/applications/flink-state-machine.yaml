@@ -1,0 +1,38 @@
+---
+# Argo CD Application for Flink State Machine Example
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flink-state-machine
+  namespace: argocd
+  labels:
+    environment: prod
+    component: flink
+spec:
+  project: confluent
+  
+  source:
+    repoURL: https://github.com/confluentfederal/cfk-argocd-demo.git
+    targetRevision: helm-migration
+    path: charts/flink-application
+    helm:
+      releaseName: state-machine-example
+      valueFiles:
+        - values-state-machine.yaml
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: confluent
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

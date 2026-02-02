@@ -161,52 +161,9 @@ flink:
     flinkConfiguration:
       taskmanager.numberOfTaskSlots: "2"
       rest.profiling.enabled: "true"
-  applications:
-    - name: state-machine-example
-      image: confluentinc/cp-flink-sql:1.19-cp1
-      flinkVersion: v1_19
-      flinkConfiguration:
-        taskmanager.numberOfTaskSlots: "2"
-      serviceAccount: flink
-      jobManager:
-        resource:
-          memory: "1200m"
-          cpu: 1
-      taskManager:
-        resource:
-          memory: "1200m"
-          cpu: 1
-      job:
-        jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
-        state: running
-        parallelism: 2
-        upgradeMode: stateless
-    
-    # Custom Kafka streaming job
-    - name: kafka-streaming-job
-      image: cstevenson954/java-flink:0.0.1
-      flinkVersion: v1_20
-      flinkConfiguration:
-        taskmanager.numberOfTaskSlots: "2"
-      serviceAccount: flink
-      jobManager:
-        resource:
-          memory: "1024m"
-          cpu: "0.5"
-      taskManager:
-        resource:
-          memory: "1024m"
-          cpu: "0.5"
-      job:
-        jarURI: local:///opt/flink/usrlib/java-flink-0.0.1.jar
-        entryClass: com.example.javaflink.StreamingJob
-        state: running
-        parallelism: 1
-        upgradeMode: stateless
-        args:
-          - "--bootstrap.servers=kafka.confluent.svc.cluster.local:9071"
-          - "--input.topic=flink-input"
-          - "--output.topic=flink-output"
+  # Applications are now managed as separate ArgoCD apps
+  # See charts/flink-application/ and argocd/applications/flink-*.yaml
+  applications: []
 
 # Content Router - Managed as separate chart
 # See charts/content-router/

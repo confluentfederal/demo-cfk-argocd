@@ -1,0 +1,6 @@
+apiVersion: v2
+name: flink-application
+description: Helm chart for deploying Flink applications on Confluent Platform
+type: application
+version: 1.0.0
+appVersion: "1.20"

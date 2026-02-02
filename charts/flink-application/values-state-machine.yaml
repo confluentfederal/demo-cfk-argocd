@@ -1,0 +1,35 @@
+# Flink Application - State Machine Example
+# Built-in Flink demo that generates state transitions
+
+namespace: confluent
+
+flinkEnvironment: flink-env
+
+image:
+  repository: confluentinc/cp-flink-sql
+  tag: "1.19-cp1"
+
+flinkVersion: v1_19
+
+serviceAccount: flink
+
+flinkConfiguration:
+  taskmanager.numberOfTaskSlots: "2"
+
+jobManager:
+  resource:
+    memory: "1200m"
+    cpu: "1"
+
+taskManager:
+  resource:
+    memory: "1200m"
+    cpu: "1"
+
+job:
+  jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+  entryClass: ""
+  state: running
+  parallelism: 2
+  upgradeMode: stateless
+  args: []

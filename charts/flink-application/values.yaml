@@ -1,0 +1,52 @@
+# Flink Application - Default values
+# This chart deploys a single FlinkApplication
+
+namespace: confluent
+
+# Flink environment to use (must exist in namespace)
+flinkEnvironment: flink-env
+
+# Container image
+image:
+  repository: confluentinc/cp-flink-sql
+  tag: "1.19-cp1"
+
+# Flink version (v1_17, v1_18, v1_19, v1_20)
+flinkVersion: v1_19
+
+# Service account for Flink pods
+serviceAccount: flink
+
+# Flink configuration
+flinkConfiguration:
+  taskmanager.numberOfTaskSlots: "2"
+
+# Job Manager resources
+jobManager:
+  resource:
+    memory: "1200m"
+    cpu: "1"
+
+# Task Manager resources
+taskManager:
+  resource:
+    memory: "1200m"
+    cpu: "1"
+
+# Job configuration
+job:
+  # JAR file location (local:// or remote URL)
+  jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+  # Entry class (optional - uses JAR manifest if not specified)
+  entryClass: ""
+  # Job state: running, suspended
+  state: running
+  # Parallelism
+  parallelism: 2
+  # Upgrade mode: stateless, savepoint, last-state
+  upgradeMode: stateless
+  # Job arguments (optional)
+  args: []
+  # Example:
+  # - "--bootstrap.servers=kafka:9092"
+  # - "--input.topic=input"
