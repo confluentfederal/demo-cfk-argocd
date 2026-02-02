@@ -1,6 +1,6 @@
-# Confluent Platform 8.1 GitOps Demo with Argo CD
+# Confluent Platform GitOps Demo with ArgoCD
 
-Complete GitOps demonstration showing declarative management of the entire Confluent Platform ecosystem using Argo CD and Helm on Kubernetes.
+Complete GitOps demonstration showing declarative management of the entire Confluent Platform ecosystem using ArgoCD and Helm on Kubernetes.
 
 ## What This Demo Shows
 
@@ -9,100 +9,85 @@ Complete GitOps demonstration showing declarative management of the entire Confl
 | **Kafka Cluster (KRaft)** | Declarative broker configuration, scaling, no Zookeeper |
 | **Kafka Connect** | Connector CRDs - add/modify connectors via Git |
 | **ksqlDB** | Queries as code - SQL stored in Git |
-| **Kafka Streams** | Application deployments managed by Argo CD |
-| **Content Router** | Content-based routing application (NEW) |
-| **Flink** | FlinkApplication CRDs (requires CMF operator) |
+| **Kafka Streams** | Content routers and custom apps as separate ArgoCD applications |
+| **Flink** | FlinkApplication CRDs managed independently |
 | **Schema Registry** | Schema evolution managed alongside code |
 | **Control Center** | Monitoring configuration as code |
 
 ## Project Structure
 
 ```
-.
-├── charts/
-│   └── confluent-platform/           # Helm chart for all components
-│       ├── Chart.yaml                # Chart metadata
-│       ├── values.yaml               # Base/default values
-│       ├── values-dev.yaml           # Development overrides
-│       ├── values-prod.yaml          # Production overrides
-│       └── templates/                # Helm templates
-│           ├── kafka.yaml            # Kafka CRD
-│           ├── kraftcontroller.yaml  # KRaft Controller CRD
-│           ├── schemaregistry.yaml   # Schema Registry CRD
-│           ├── connect.yaml          # Connect CRD
-│           ├── connectors.yaml       # Connector CRDs
-│           ├── ksqldb.yaml           # ksqlDB CRD
-│           ├── ksqldb-queries.yaml   # ksqlDB queries ConfigMap + init Job
-│           ├── controlcenter.yaml    # Control Center CRD
-│           ├── kstreams-app.yaml     # Kafka Streams Deployment
-│           ├── content-router.yaml   # Content Router Deployment (NEW)
-│           └── flink.yaml            # Flink resources
+cfk-argocd-demo/
 ├── argocd/
-│   ├── project.yaml                  # ArgoCD AppProject
+│   ├── project.yaml                         # ArgoCD AppProject
 │   └── applications/
-│       ├── confluent-platform-dev.yaml   # Dev environment app
-│       └── confluent-platform-prod.yaml  # Prod environment app
-├── docs/                             # Documentation
-├── eks-cluster-config.yaml           # eksctl config for AWS EKS
-└── quick-start.sh                    # One-command local setup
+│       ├── confluent-platform-prod.yaml     # Core platform
+│       ├── confluent-platform-dev.yaml      # Dev environment
+│       ├── content-router-prod.yaml         # Content routing
+│       ├── content-router-syslog.yaml       # Syslog routing
+│       ├── content-router-akamai.yaml       # Akamai CDN routing
+│       ├── datagen-connectors-prod.yaml     # DataGen connectors
+│       ├── flink-state-machine.yaml         # Flink example app
+│       ├── flink-kafka-streaming.yaml       # Flink streaming job
+│       ├── flink-hostname-enrichment.yaml   # Flink enrichment
+│       └── syslog-reconstruction.yaml       # KStreams syslog app
+├── charts/
+│   ├── confluent-platform/                  # Core platform chart
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml                      # Base defaults
+│   │   ├── values-dev.yaml                  # Dev overrides
+│   │   ├── values-prod.yaml                 # Prod overrides
+│   │   └── templates/
+│   │       ├── kafka.yaml
+│   │       ├── kraftcontroller.yaml
+│   │       ├── schemaregistry.yaml
+│   │       ├── connect.yaml
+│   │       ├── ksqldb.yaml
+│   │       ├── ksqldb-queries.yaml
+│   │       ├── controlcenter.yaml
+│   │       ├── flink.yaml
+│   │       └── kstreams-app.yaml
+│   ├── content-router/                      # KStreams routing chart
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   ├── values-syslog.yaml
+│   │   ├── values-akamai.yaml
+│   │   └── templates/
+│   ├── datagen-connectors/                  # Connector definitions
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   └── templates/
+│   ├── flink-application/                   # Flink job chart
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   ├── values-state-machine.yaml
+│   │   ├── values-kafka-streaming.yaml
+│   │   ├── values-hostname-enrichment.yaml
+│   │   └── templates/
+│   └── syslog-reconstruction/               # Specialized KStreams
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+├── docs/
+│   ├── CONFLUENT-PLATFORM-GITOPS-WHITEPAPER.md
+│   ├── FLINK-APPLICATION-DEPLOYMENT-WALKTHROUGH.md
+│   └── ARGOCD-REPO-CONNECTION.md
+├── eks-cluster-config.yaml
+└── quick-start.sh
 ```
 
-## Quick Start (Local Development)
+## Quick Start
+
+### Prerequisites
 
 ```bash
-# Ensure Docker Desktop is running, then:
-chmod +x quick-start.sh
-./quick-start.sh
-```
-
-This will:
-1. Create a k3d cluster with 3 nodes
-2. Install CFK operator
-3. Install Argo CD
-4. Deploy Confluent Platform 8.1
-
-## Manual Helm Deployment
-
-```bash
-# Dev environment (reduced resources)
-helm upgrade --install confluent-platform charts/confluent-platform \
-  --namespace confluent --create-namespace \
-  -f charts/confluent-platform/values.yaml \
-  -f charts/confluent-platform/values-dev.yaml
-
-# Prod environment (full resources)
-helm upgrade --install confluent-platform charts/confluent-platform \
-  --namespace confluent --create-namespace \
-  -f charts/confluent-platform/values.yaml \
-  -f charts/confluent-platform/values-prod.yaml
-```
-
-## AWS EKS Deployment
-
-### Create EKS Cluster
-
-```bash
-# Create cluster with proper tagging
-eksctl create cluster -f eks-cluster-config.yaml
-
-# Install EBS CSI driver
-eksctl create addon --name aws-ebs-csi-driver --cluster cfk-argocd-demo --region us-east-1
-
-# Add EC2 permissions to node role (for EBS)
-ROLE_NAME=$(aws iam list-roles --query "Roles[?contains(RoleName, 'eksctl-cfk-argocd-demo-nodegroup')].RoleName" --output text)
-aws iam attach-role-policy --role-name "$ROLE_NAME" --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
-```
-
-### Install Operators
-
-```bash
-# CFK Operator
+# Install CFK Operator
 helm repo add confluentinc https://packages.confluent.io/helm
 kubectl create namespace confluent-operator
 helm upgrade --install confluent-operator confluentinc/confluent-for-kubernetes \
   --namespace confluent-operator --set namespaced=false
 
-# Argo CD
+# Install ArgoCD
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
@@ -110,50 +95,81 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 ### Deploy via ArgoCD
 
 ```bash
-# Apply ArgoCD project and application
+# Apply ArgoCD project and applications
 kubectl apply -f argocd/project.yaml
 kubectl apply -f argocd/applications/confluent-platform-prod.yaml
+kubectl apply -f argocd/applications/datagen-connectors-prod.yaml
 ```
 
 ## Components Deployed
 
-### Core Platform (CP 8.1 KRaft Mode)
-- **KRaft Controllers** - Metadata management (3 replicas prod, 1 dev)
-- **Kafka** - Event streaming (3 brokers prod, 1 dev)
-- **Schema Registry** - Schema management
-- **Control Center** - Monitoring UI (Next-Gen 2.3.1)
+### Core Platform (Confluent Platform 8.1 KRaft Mode)
 
-### Data Integration
-- **Kafka Connect** - With declarative connector management
-  - DataGen connector (users topic)
-  - DataGen connector (pageviews topic)
-  - DataGen connector (orders topic)
-  - DataGen connector (stock-trades topic)
-- **ksqlDB** - Stream processing with queries as code
+| Component | Description |
+|-----------|-------------|
+| KRaft Controllers | Metadata management (3 replicas prod) |
+| Kafka | Event streaming (3 brokers prod) |
+| Schema Registry | Schema management |
+| Kafka Connect | Connector runtime |
+| ksqlDB | Stream processing SQL |
+| Control Center | Monitoring UI |
+| Flink Environment | CMF + FlinkEnvironment |
 
-### Stream Processing
-- **Kafka Streams** - Sample pageview-enricher application
-- **Content Router** - Content-based routing application (disabled by default)
-- **Flink** - FlinkApplication for aggregations (requires CMF)
+### DataGen Connectors
+
+| Connector | Topic | Purpose |
+|-----------|-------|---------|
+| datagen-users | users | User profiles |
+| datagen-pageviews | pageviews | Page view events |
+| datagen-orders | orders | Order events |
+| datagen-stock-trades | stock-trades | Stock trade data |
+| datagen-network-events | network-events | Clickstream for ksqlDB |
+| datagen-flink-input | flink-input | Input for Flink jobs |
+
+### ksqlDB Queries
+
+| Query | Description |
+|-------|-------------|
+| `CLICKSTREAM_RAW` | Stream from network-events topic |
+| `REQUESTS_BY_STATUS` | Aggregates by HTTP status (1 min window) |
+| `ERROR_RATE` | Tracks 4xx/5xx errors |
+
+### Flink Applications
+
+| Application | Description |
+|-------------|-------------|
+| state-machine-example | Built-in Flink example |
+| kafka-streaming-job | Custom streaming processor |
+| hostname-enrichment | Data enrichment pipeline |
+
+### Kafka Streams Applications
+
+| Application | Description |
+|-------------|-------------|
+| content-router-syslog | Syslog content routing |
+| content-router-akamai | Akamai CDN routing |
+| syslog-reconstruction | Syslog segment reassembly |
 
 ## GitOps Workflow Examples
 
 ### 1. Add a New Connector
-Edit `charts/confluent-platform/values.yaml`:
+
+Edit `charts/datagen-connectors/values.yaml`:
 
 ```yaml
 connectors:
-  items:
-    - name: my-new-connector
-      class: io.confluent.kafka.connect.datagen.DatagenConnector
-      taskMax: 1
-      topic: my-new-topic
-      quickstart: orders
+  - name: my-new-connector
+    enabled: true
+    class: io.confluent.kafka.connect.datagen.DatagenConnector
+    taskMax: 1
+    topic: my-new-topic
+    quickstart: orders
 ```
 
-Commit, push, watch Argo CD deploy it.
+Commit, push, ArgoCD syncs automatically.
 
 ### 2. Scale Kafka Cluster
+
 Edit `charts/confluent-platform/values-prod.yaml`:
 
 ```yaml
@@ -161,28 +177,8 @@ kafka:
   replicas: 5
 ```
 
-### 3. Enable Content Router
-Edit the appropriate values file:
+### 3. Add a ksqlDB Query
 
-```yaml
-contentRouter:
-  enabled: true
-  image:
-    repository: your-registry/kstream-content-router
-    tag: "1.0.0"
-  inputTopics:
-    - raw-events
-  routing:
-    inputTopicFormat: AVRO
-    inputMessageField: eventType
-    rules:
-      - regEx: ".*ERROR.*"
-        outputTopic: error-events
-      - substring: "ORDER"
-        outputTopic: order-events
-```
-
-### 4. Add ksqlDB Query
 Edit `charts/confluent-platform/values.yaml`:
 
 ```yaml
@@ -190,22 +186,36 @@ ksqldb:
   queries:
     items:
       05-my-aggregation.sql: |
-        CREATE TABLE my_aggregation AS
+        CREATE TABLE IF NOT EXISTS my_aggregation AS
         SELECT key, COUNT(*) as cnt
         FROM my_stream
-        GROUP BY key;
+        GROUP BY key
+        EMIT CHANGES;
 ```
 
-## Environment Comparison
+### 4. Deploy a New Content Router
 
-| Setting | Dev (k3d) | Prod (EKS/AKS) |
-|---------|-----------|----------------|
+1. Create values file: `charts/content-router/values-myrouter.yaml`
+2. Create ArgoCD app: `argocd/applications/content-router-myrouter.yaml`
+3. Commit and push
+4. Apply: `kubectl apply -f argocd/applications/content-router-myrouter.yaml`
+
+### 5. Deploy a New Flink Application
+
+1. Create values file: `charts/flink-application/values-myjob.yaml`
+2. Create ArgoCD app: `argocd/applications/flink-myjob.yaml`
+3. Commit and push
+4. Apply: `kubectl apply -f argocd/applications/flink-myjob.yaml`
+
+## Environment Configuration
+
+| Setting | Dev | Prod |
+|---------|-----|------|
 | KRaft replicas | 1 | 3 |
 | Kafka replicas | 1 | 3 |
 | Kafka storage | 10Gi | 100Gi |
 | Connect workers | 1 | 2 |
 | ksqlDB replicas | 1 | 2 |
-| Flink | Enabled | Enabled |
 
 ## Accessing Services
 
@@ -215,12 +225,13 @@ kubectl port-forward controlcenter-0 9021:9021 -n confluent
 # http://localhost:9021
 ```
 
-### Argo CD
+### ArgoCD
 ```bash
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 # https://localhost:8080
 # Username: admin
-# Password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+# Password:
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
 ### ksqlDB CLI
@@ -228,67 +239,92 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 kubectl exec -it ksqldb-0 -n confluent -- ksql http://localhost:8088
 ```
 
+### Flink Dashboard
+```bash
+kubectl port-forward svc/<flink-app>-rest 8081:8081 -n confluent
+# http://localhost:8081
+```
+
+## Operational Commands
+
+### ArgoCD
+
+```bash
+# List applications
+kubectl get applications -n argocd
+
+# Force sync
+kubectl annotate application <name> -n argocd argocd.argoproj.io/refresh=hard --overwrite
+
+# Check sync status
+kubectl get application <name> -n argocd -o jsonpath='{.status.sync.status}'
+```
+
+### Confluent Platform
+
+```bash
+# List components
+kubectl get kafka,connect,schemaregistry,ksqldb,controlcenter -n confluent
+
+# List connectors
+kubectl get connector -n confluent
+
+# List Flink apps
+kubectl get flinkapplication,flinkdeployment -n confluent
+```
+
+### Kafka Topics
+
+```bash
+# List topics
+kubectl exec kafka-0 -n confluent -- kafka-topics --list --bootstrap-server localhost:9092
+
+# Consume messages
+kubectl exec kafka-0 -n confluent -- kafka-console-consumer \
+  --topic <topic> --bootstrap-server localhost:9092 --max-messages 5
+```
+
 ## Troubleshooting
 
 ### Pods Pending
 ```bash
 kubectl describe pod <pod> -n confluent
-# Check PVC binding, resource limits
+# Check: PVC binding, resource limits, node capacity
 ```
 
-### Connector Not Creating
+### Connector Not Running
 ```bash
 kubectl get connector -n confluent
 kubectl describe connector <name> -n confluent
-kubectl logs -l app=connect -n confluent
 ```
 
-### Argo CD Out of Sync
+### ArgoCD Out of Sync
 ```bash
-# Force sync
-kubectl patch application confluent-platform-prod -n argocd \
-  --type merge -p '{"operation": {"sync": {}}}'
+kubectl annotate application <name> -n argocd argocd.argoproj.io/refresh=hard --overwrite
 ```
 
-### Validate Helm Templates
+### Flink Job Failed
 ```bash
-# Lint the chart
-helm lint charts/confluent-platform
-
-# Render templates to check output
-helm template test charts/confluent-platform \
-  -f charts/confluent-platform/values.yaml \
-  -f charts/confluent-platform/values-dev.yaml
+kubectl describe flinkdeployment <name> -n confluent
+kubectl logs -l app=<name> -n confluent --tail=100
 ```
 
-## Cleanup
+## Documentation
 
-```bash
-# Delete ArgoCD application
-kubectl delete application confluent-platform-prod -n argocd
-
-# Delete via Helm
-helm uninstall confluent-platform -n confluent
-
-# Delete local cluster
-k3d cluster delete cfk-demo
-
-# Delete EKS cluster
-eksctl delete cluster --name cfk-argocd-demo --region us-east-1
-```
+- [GitOps Whitepaper](docs/CONFLUENT-PLATFORM-GITOPS-WHITEPAPER.md) - Complete implementation guide
+- [Flink Deployment Walkthrough](docs/FLINK-APPLICATION-DEPLOYMENT-WALKTHROUGH.md) - Step-by-step Flink setup
+- [ArgoCD Repo Connection](docs/ARGOCD-REPO-CONNECTION.md) - Connecting ArgoCD to GitHub
 
 ## Technologies
 
 - **Confluent Platform 8.1** - Apache Kafka with KRaft mode
 - **CFK 3.1** - Confluent for Kubernetes operator
-- **Argo CD** - GitOps continuous delivery
+- **ArgoCD** - GitOps continuous delivery
 - **Helm** - Kubernetes package manager
-- **k3d** - Local Kubernetes (development)
-- **AWS EKS** - Production Kubernetes
+- **Apache Flink** - Stream processing
 
 ## References
 
 - [CFK Documentation](https://docs.confluent.io/operator/current/overview.html)
-- [Declarative Connectors](https://www.confluent.io/blog/declarative-connectors-with-confluent-for-kubernetes/)
-- [Argo CD Documentation](https://argo-cd.readthedocs.io/)
-- [Helm Documentation](https://helm.sh/docs/)
+- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
+- [Flink on Confluent](https://docs.confluent.io/platform/current/flink/overview.html)
