@@ -23,14 +23,11 @@ ksqldb:
   replicas: 2
   dataVolumeCapacity: 50Gi
 
-# Control Center - external access via NodePort
+# Control Center - external access via LoadBalancer
 controlCenter:
   externalAccess:
     enabled: true
-    type: nodePort
-    nodePort:
-      host: "54.81.248.214"
-      nodePortOffset: 30021
+    type: loadBalancer
 
 # Kafka Streams - 3 replicas for HA
 kstreamsApp:
