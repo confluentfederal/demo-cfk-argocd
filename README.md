@@ -14,6 +14,8 @@ Complete GitOps demonstration showing declarative management of the entire Confl
 | **Schema Registry** | Schema evolution managed alongside code |
 | **Control Center** | Monitoring configuration as code |
 
+Just for testing. 
+
 ## Project Structure
 
 ```
