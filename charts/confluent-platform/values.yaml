@@ -107,6 +107,17 @@ ksqldb:
         WINDOW TUMBLING (SIZE 5 MINUTES)
         GROUP BY ip
         EMIT CHANGES;
+      # Error Rate Monitor - tracks 4xx and 5xx responses
+      04-error-rate.sql: |
+        CREATE TABLE IF NOT EXISTS error_rate AS
+        SELECT 
+          status,
+          COUNT(*) AS error_count
+        FROM clickstream_raw
+        WHERE status LIKE '4%' OR status LIKE '5%'
+        WINDOW TUMBLING (SIZE 1 MINUTE)
+        GROUP BY status
+        EMIT CHANGES;
 
 # Control Center
 controlCenter:
