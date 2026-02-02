@@ -70,43 +70,40 @@ ksqldb:
   queries:
     enabled: true
     items:
-      01-create-pageviews-stream.sql: |
-        CREATE STREAM pageviews_stream (
-          viewtime BIGINT,
-          userid VARCHAR,
-          pageid VARCHAR
+      # Network Events Stream - monitors network events for enrichment
+      01-network-events-stream.sql: |
+        CREATE STREAM network_events_stream (
+          event_time BIGINT,
+          source_ip VARCHAR,
+          dest_ip VARCHAR,
+          protocol VARCHAR,
+          bytes_transferred BIGINT
         ) WITH (
-          KAFKA_TOPIC='pageviews',
-          VALUE_FORMAT='AVRO'
+          KAFKA_TOPIC='network-events',
+          VALUE_FORMAT='JSON'
         );
-      02-create-users-table.sql: |
-        CREATE TABLE users_table (
-          userid VARCHAR PRIMARY KEY,
-          registertime BIGINT,
-          gender VARCHAR,
-          regionid VARCHAR
-        ) WITH (
-          KAFKA_TOPIC='users',
-          VALUE_FORMAT='AVRO'
-        );
-      03-create-enriched-pageviews.sql: |
-        CREATE STREAM enriched_pageviews AS
+      # Network Traffic Summary - aggregates traffic by protocol
+      02-traffic-by-protocol.sql: |
+        CREATE TABLE traffic_by_protocol AS
         SELECT 
-          pv.viewtime,
-          pv.userid,
-          pv.pageid,
-          u.gender,
-          u.regionid
-        FROM pageviews_stream pv
-        LEFT JOIN users_table u ON pv.userid = u.userid
+          protocol,
+          COUNT(*) AS event_count,
+          SUM(bytes_transferred) AS total_bytes
+        FROM network_events_stream
+        WINDOW TUMBLING (SIZE 1 MINUTE)
+        GROUP BY protocol
         EMIT CHANGES;
-      04-pageviews-by-region.sql: |
-        CREATE TABLE pageviews_by_region AS
+      # High Volume Sources - identifies high traffic sources
+      03-high-volume-sources.sql: |
+        CREATE TABLE high_volume_sources AS
         SELECT 
-          regionid,
-          COUNT(*) AS view_count
-        FROM enriched_pageviews
-        GROUP BY regionid
+          source_ip,
+          COUNT(*) AS request_count,
+          SUM(bytes_transferred) AS total_bytes
+        FROM network_events_stream
+        WINDOW TUMBLING (SIZE 5 MINUTES)
+        GROUP BY source_ip
+        HAVING COUNT(*) > 100
         EMIT CHANGES;
 
 # Control Center
