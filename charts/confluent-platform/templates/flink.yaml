@@ -60,6 +60,10 @@ spec:
     state: {{ .job.state }}
     parallelism: {{ .job.parallelism }}
     upgradeMode: {{ .job.upgradeMode | default "stateless" }}
+    {{- if .job.args }}
+    args:
+      {{- toYaml .job.args | nindent 6 }}
+    {{- end }}
   cmfRestClassRef:
     name: default
     namespace: {{ include "confluent-platform.namespace" $ }}

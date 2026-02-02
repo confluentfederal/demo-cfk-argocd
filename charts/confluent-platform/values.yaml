@@ -201,6 +201,30 @@ flink:
         state: running
         parallelism: 2
         upgradeMode: stateless
+    
+    - name: kafka-streaming-job
+      image: cstevenson954/java-flink:0.0.1
+      flinkVersion: v1_20
+      flinkConfiguration:
+        taskmanager.numberOfTaskSlots: "2"
+      serviceAccount: flink
+      jobManager:
+        resource:
+          memory: "1500m"
+          cpu: 1
+      taskManager:
+        resource:
+          memory: "1500m"
+          cpu: 1
+      job:
+        jarURI: local:///opt/flink/usrlib/java-flink-0.0.1.jar
+        state: running
+        parallelism: 2
+        upgradeMode: stateless
+        args:
+          - "--bootstrap.servers=kafka.confluent.svc.cluster.local:9071"
+          - "--input.topic=flink-input"
+          - "--output.topic=flink-output"
 
 # Content Router - Managed as separate chart
 # See charts/content-router/
