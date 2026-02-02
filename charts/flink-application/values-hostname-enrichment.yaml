@@ -18,12 +18,12 @@ flinkConfiguration:
 
 jobManager:
   resource:
-    memory: "512m"
+    memory: "1024m"
     cpu: "0.25"
 
 taskManager:
   resource:
-    memory: "512m"
+    memory: "1024m"
     cpu: "0.25"
 
 job:
