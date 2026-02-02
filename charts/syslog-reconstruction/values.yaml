@@ -33,7 +33,7 @@ topics:
   outputExpired: reconstruction-expired
 
 window:
-  sizeSeconds: 30
+  sizeSeconds: 5
   gracePeriodSeconds: 60
 
 expired:
